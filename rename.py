@@ -45,11 +45,12 @@ class TableOutputWriter(OutputWriter):
 
 class CsvOutputWriter(OutputWriter):
     def __init__(self, columns, fileName):
-        self.file = open(fileName, 'w')
+        self.file = open(fileName, 'wb')
         self.writer = csv.writer(self.file, delimiter=',')
         self.writer.writerow(columns)
 
     def write(self, *row):
+        logger.warn("Writing %s", row)
         self.writer.writerow(row)
 
     def flush(self):
@@ -68,7 +69,7 @@ def is_excluded(file):
 def generate_file(files, writer):
     for file in files:
         logger.info("File added: %s", file)
-        writer.write(file,file)
+        writer.write(file.strip(),file.strip())
 
 def get_file_list(location, filters):
     return [ join(location,f) for f in os.listdir(location) if all(fil(join(location,f)) for fil in filters) ]
@@ -93,14 +94,15 @@ def rename(read_file, action='dry_run'):
     #print read_file
 
     for line in readFile:
-        original_file=line[0]
-        new_file=line[1]
-
+        
         if not read_header:
             read_header = True
             continue
-        if read_file in original_file:
+        if len(line) == 0 or read_file in line[0] :
             continue
+
+        original_file=line[0]
+        new_file=line[1]
 
         if new_file == 'D' or new_file == 'd' or new_file == 'delete':
             new_file = 'Deleted'
@@ -108,11 +110,14 @@ def rename(read_file, action='dry_run'):
         logger_msg="\n\tOriginal File: \t%s\n\tNew File: \t%s" %(original_file, new_file)
         logger.info(logger_msg)
 
-        if action != 'dry_run':
-            if new_file == 'Deleted':
-                os.remove(original_file)
-            else:
-                os.rename(original_file, new_file)
+        try:
+            if action != 'dry_run':
+                if new_file == 'Deleted':
+                    os.remove(original_file)
+                else:
+                    os.rename(original_file, new_file)
+        except:
+            logger.error("Something went wrong!")
 
 def error(msg):
     logger.error(msg)
@@ -169,6 +174,7 @@ if __name__== '__main__':
     if args.action == 'dry_run':
         writer = TableOutputWriter(columns)  
     elif args.action == 'generate':
+        #writer = TableOutputWriter(columns)  
         writer = CsvOutputWriter(columns, args.file_name)
 
 
